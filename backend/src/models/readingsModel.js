@@ -1,6 +1,7 @@
 import { supabase } from "../config/supabaseClient.js";
 
 const TABLE = "sensor_readings";
+const PER_PAGE = 10; // Tentukan jumlah item per halaman
 
 function normalize(row) {
   if (!row) return row;
@@ -13,15 +14,27 @@ function normalize(row) {
 }
 
 export const ReadingsModel = {
-  async list() {
-    const { data, error } = await supabase
+  async list(page = 1) {
+    const pageNum = Number(page) || 1;
+    const from = (pageNum - 1) * PER_PAGE;
+    const to = from + PER_PAGE - 1;
+
+    const { data, error, count } = await supabase
       .from(TABLE)
-      .select("id, temperature, threshold_value, recorded_at")
+      .select("id, temperature, threshold_value, recorded_at", {
+        count: "exact",
+      }) // Minta total count
       .order("recorded_at", { ascending: false })
-      .limit(100);
+      .range(from, to); // Terapkan pagination
 
     if (error) throw error;
-    return data.map(normalize);
+
+    return {
+      data: data.map(normalize),
+      count: count,
+      perPage: PER_PAGE,
+      page: pageNum,
+    };
   },
 
   async latest() {

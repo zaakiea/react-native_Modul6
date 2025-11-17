@@ -3,8 +3,9 @@ import { ReadingsModel } from "../models/readingsModel.js";
 export const ReadingsController = {
   async list(req, res) {
     try {
-      const data = await ReadingsModel.list();
-      res.json(data);
+      const page = req.query.page || 1; // Ambil 'page' dari query string
+      const result = await ReadingsModel.list(page);
+      res.json(result); // Kirim hasil yang berisi data dan info pagination
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

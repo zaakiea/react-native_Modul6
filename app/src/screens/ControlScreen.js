@@ -11,11 +11,13 @@ import {
   Platform,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { Api } from "../services/api.js";
+// import { Api } from "../services/api.js"; // Hapus
+import { useApi } from "../hooks/useApi.js"; // Import hook
 import { DataTable } from "../components/DataTable.js";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export function ControlScreen() {
+  const api = useApi(); // Gunakan hook useApi
   const [thresholdValue, setThresholdValue] = useState(30);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -27,14 +29,14 @@ export function ControlScreen() {
     setLoading(true);
     setError(null);
     try {
-      const data = await Api.getThresholds();
+      const data = await api.getThresholds(); // Gunakan api.getThresholds()
       setHistory(data ?? []);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [api]); // Tambahkan api sebagai dependensi
 
   useFocusEffect(
     useCallback(() => {
@@ -54,7 +56,7 @@ export function ControlScreen() {
     setSubmitting(true);
     setError(null);
     try {
-      await Api.createThreshold({ value: valueNumber, note });
+      await api.createThreshold({ value: valueNumber, note }); // Gunakan api.createThreshold()
       setNote("");
       await fetchHistory();
     } catch (err) {
@@ -62,76 +64,83 @@ export function ControlScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [thresholdValue, note, fetchHistory]);
+  }, [thresholdValue, note, fetchHistory, api]); // Tambahkan api sebagai dependensi
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.card}>
-          <Text style={styles.title}>Configure Threshold</Text>
-          {latestThreshold !== null && (
-            <Text style={styles.metaText}>
-              Current threshold: {Number(latestThreshold).toFixed(2)}°C
-            </Text>
-          )}
-          <Text style={styles.label}>Threshold (°C)</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="numeric"
-            value={String(thresholdValue)}
-            onChangeText={setThresholdValue}
-          />
-          <Text style={styles.label}>Note (optional)</Text>
-          <TextInput
-            style={[styles.input, styles.noteInput]}
-            value={note}
-            onChangeText={setNote}
-            multiline
-            numberOfLines={3}
-            placeholder="Describe why you are changing the threshold"
-          />
-          {error && <Text style={styles.errorText}>{error}</Text>}
-          <TouchableOpacity
-            style={[styles.button, submitting && styles.buttonDisabled]}
-            onPress={handleSubmit}
-            disabled={submitting}
-          >
-            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Save Threshold</Text>}
-          </TouchableOpacity>
-        </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.container}>
+          <View style={styles.card}>
+            <Text style={styles.title}>Configure Threshold</Text>
+            {latestThreshold !== null && (
+              <Text style={styles.metaText}>
+                Current threshold: {Number(latestThreshold).toFixed(2)}°C
+              </Text>
+            )}
+            <Text style={styles.label}>Threshold (°C)</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              value={String(thresholdValue)}
+              onChangeText={setThresholdValue}
+            />
+            <Text style={styles.label}>Note (optional)</Text>
+            <TextInput
+              style={[styles.input, styles.noteInput]}
+              value={note}
+              onChangeText={setNote}
+              multiline
+              numberOfLines={3}
+              placeholder="Describe why you are changing the threshold"
+            />
+            {error && <Text style={styles.errorText}>{error}</Text>}
+            <TouchableOpacity
+              style={[styles.button, submitting && styles.buttonDisabled]}
+              onPress={handleSubmit}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Save Threshold</Text>
+              )}
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Threshold History</Text>
-          {loading && <ActivityIndicator />}
-        </View>
-        <DataTable
-          columns={[
-            {
-              key: "created_at",
-              title: "Saved At",
-              render: (value) => (value ? new Date(value).toLocaleString() : "--"),
-            },
-            {
-              key: "value",
-              title: "Threshold (°C)",
-              render: (value) =>
-                typeof value === "number" ? `${Number(value).toFixed(2)}` : "--",
-            },
-            {
-              key: "note",
-              title: "Note",
-              render: (value) => value || "-",
-            },
-          ]}
-          data={history}
-          keyExtractor={(item) => item.id}
-        />
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Threshold History</Text>
+            {loading && <ActivityIndicator />}
+          </View>
+          <DataTable
+            columns={[
+              {
+                key: "created_at",
+                title: "Saved At",
+                render: (value) =>
+                  value ? new Date(value).toLocaleString() : "--",
+              },
+              {
+                key: "value",
+                title: "Threshold (°C)",
+                render: (value) =>
+                  typeof value === "number"
+                    ? `${Number(value).toFixed(2)}`
+                    : "--",
+              },
+              {
+                key: "note",
+                title: "Note",
+                render: (value) => value || "-",
+              },
+            ]}
+            data={history}
+            keyExtractor={(item) => item.id}
+          />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

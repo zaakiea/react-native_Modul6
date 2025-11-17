@@ -29,14 +29,12 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "backendUrl": "http://10.46.46.36",
+      "backendUrl": "http://10.46.46.28:5000",
       "mqtt": {
         "brokerUrl": "wss://broker.hivemq.com:8884/mqtt",
         "topic": "ppb/kel25/iot/temperature"
       }
     },
-    "plugins": [
-      "expo-font"
-    ]
+    "plugins": ["expo-font", "expo-splash-screen"]
   }
 }
