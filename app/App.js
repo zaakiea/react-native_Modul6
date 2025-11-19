@@ -1,49 +1,54 @@
 import { useEffect, useCallback, useState } from "react";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
-// Ganti import Tab Navigator
-// import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { View, LogBox } from "react-native";
+import * as SplashScreenLib from "expo-splash-screen"; // Ganti nama import library native agar tidak bentrok
+
+// --- Import Screen ---
 import { MonitoringScreen } from "./src/screens/MonitoringScreen.js";
 import { ControlScreen } from "./src/screens/ControlScreen.js";
-import { LoginScreen } from "./src/screens/LoginScreen.js"; // Import baru
-import { ProfileScreen } from "./src/screens/ProfileScreen.js"; // Import baru
-import { assertConfig } from "./src/services/config.js";
-import { AuthProvider, useAuth } from "./src/hooks/useAuth.js"; // Import baru
-import * as SplashScreen from "expo-splash-screen"; // Import baru
-import { View, ActivityIndicator, LogBox } from "react-native";
+import { LoginScreen } from "./src/screens/LoginScreen.js";
+import { ProfileScreen } from "./src/screens/ProfileScreen.js";
+import { SplashScreen } from "./src/screens/SplashScreen.js"; // Import Component Custom Splash Screen
 
-// Mengabaikan peringatan timer yang umum di Expo Go dengan Supabase
+// --- Import Services/Hooks ---
+import { assertConfig } from "./src/services/config.js";
+import { AuthProvider, useAuth } from "./src/hooks/useAuth.js";
+
+// Mengabaikan peringatan timer
 LogBox.ignoreLogs(["Setting a timer for a long period of time"]);
 
-// Ganti jadi MaterialTopTabNavigator untuk gestur swipe
 const Tab = createMaterialTopTabNavigator();
 
-// Pindahkan Navigasi Tab ke komponen terpisah
+// Komponen Navigasi Tab
 function AppTabs() {
   const { session, user, loading } = useAuth();
+  const [isSplashAnimationFinished, setSplashAnimationFinished] =
+    useState(false);
 
-  if (loading) {
-    // Tampilkan loading screen sementara auth dicek
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#f8f9fb",
-        }}
-      >
-        <ActivityIndicator size="large" />
-      </View>
-    );
+  useEffect(() => {
+    // Tahan Splash Screen minimal selama 3 detik (3000ms)
+    // Anda bisa mengubah angka 3000 ini sesuai durasi GIF yang diinginkan
+    const timer = setTimeout(() => {
+      setSplashAnimationFinished(true);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Tampilkan Custom Splash Screen jika:
+  // 1. Data Auth masih loading (loading === true)
+  // 2. ATAU Durasi minimal 3 detik belum selesai (isSplashAnimationFinished === false)
+  if (loading || !isSplashAnimationFinished) {
+    return <SplashScreen />;
   }
 
   return (
     <Tab.Navigator
-      tabBarPosition="bottom" // Posisikan tab di bawah
-      swipeEnabled={true} // Aktifkan gestur swipe
+      tabBarPosition="bottom"
+      swipeEnabled={true}
       screenOptions={({ route }) => ({
         tabBarShowLabel: true,
         tabBarActiveTintColor: "#2563eb",
@@ -63,10 +68,7 @@ function AppTabs() {
         },
       })}
     >
-      {/* Tab ini selalu tampil */}
       <Tab.Screen name="Monitoring" component={MonitoringScreen} />
-
-      {/* Tab kondisional berdasarkan sesi login */}
       {session && user ? (
         <>
           <Tab.Screen name="Control" component={ControlScreen} />
@@ -79,8 +81,8 @@ function AppTabs() {
   );
 }
 
-// Tahan splash screen
-SplashScreen.preventAutoHideAsync();
+// Tahan splash screen native (logo putih bawaan) sampai aplikasi siap
+SplashScreenLib.preventAutoHideAsync();
 
 export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
@@ -88,14 +90,12 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Lakukan validasi config
         assertConfig();
-        // Anda bisa tambahkan logic loading font di sini jika ada
+        // Load font atau aset lain di sini jika perlu
         // await Font.loadAsync(...);
       } catch (e) {
         console.warn(e);
       } finally {
-        // Beri tahu aplikasi bahwa persiapan selesai
         setAppIsReady(true);
       }
     }
@@ -104,8 +104,8 @@ export default function App() {
 
   const onLayoutRootView = useCallback(async () => {
     if (appIsReady) {
-      // Sembunyikan splash screen setelah layout siap
-      await SplashScreen.hideAsync();
+      // Sembunyikan native splash screen segera agar Custom GIF Splash Screen bisa tampil
+      await SplashScreenLib.hideAsync();
     }
   }, [appIsReady]);
 
@@ -118,15 +118,13 @@ export default function App() {
   };
 
   if (!appIsReady) {
-    return null; // Tampilkan splash screen (dari app.json)
+    return null;
   }
 
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>
       <AuthProvider>
         <NavigationContainer theme={theme}>
-          {/* Komponen Header/Navbar global dipindahkan ke sini */}
-          {/* Kita gunakan wrapper Navigator agar bisa menampilkan Header di atas TopTabNavigator */}
           <Tab.Navigator
             screenOptions={{
               headerShown: true,
@@ -136,7 +134,7 @@ export default function App() {
               headerStyle: { backgroundColor: "#f8f9fb" },
               headerTitleStyle: { fontWeight: "600", fontSize: 18 },
             }}
-            tabBar={() => null} // Sembunyikan tab bar dari wrapper ini
+            tabBar={() => null}
           >
             <Tab.Screen name="AppRoot" component={AppTabs} />
           </Tab.Navigator>
